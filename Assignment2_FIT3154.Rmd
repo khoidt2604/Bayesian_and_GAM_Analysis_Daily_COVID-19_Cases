@@ -1,0 +1,384 @@
+---
+title: "Assignment2_FIT3154"
+author: "Khoi"
+output: html_document
+---
+
+Question 1.1:
+
+```{r}
+
+getwd()
+```
+
+```{r}
+stan_output <- read.csv("gamma.hc.2024.csv")
+```
+
+```{r}
+# Load necessary library
+install.packages("ggplot2")
+library(ggplot2)
+```
+
+```{r}
+
+ggplot(stan_output, aes(x = mu)) +
+  geom_histogram(bins = 50, fill = "blue", color = "black") +
+  ggtitle("Histogram of Posterior Samples for µ") +
+  xlab("µ") +
+  ylab("Frequency")
+
+# Calculate posterior mean
+posterior_mean <- mean(stan_output$mu)
+
+# Calculate 95% credible interval
+ci <- quantile(stan_output$mu, probs = c(0.025, 0.975))
+
+# Display results
+cat("Posterior mean of µ: ", posterior_mean, "\n")
+cat("95% credible interval of µ: [", ci[1], ", ", ci[2], "]\n")
+
+
+```
+
+\_ The posterior mean has increased slightly in the current analysis, with a difference of about 71.5 units. This small change is likely due to the influence of the different prior (half-Cauchy) compared to the inverse gamma used previously.
+
+\_ The lower bound of the credible interval in the current analysis is slightly higher (7953.733 vs 7904), while the upper bound is also slightly higher (9154.023 vs 9053). Overall, the credible interval in the current analysis is a little wider compared to the interval from Assignment 1.
+
+\_ The differences between the results of the two assignments are small. The posterior mean is marginally higher, and the credible interval is slightly wider when using the half-Cauchy prior. However, these changes are relatively modest, indicating that the data is sufficiently informative and robust, with the prior having a small but noticeable influence on the posterior estimates.
+
+Question 1.4:
+
+```{r}
+case_data <- read.csv("covid.cases.ass1.2024.csv")
+```
+
+```{r}
+daily_cases <- case_data$daily.cases
+```
+
+```{r}
+phi_values <- stan_output$phi
+posterior_phi_mean <- mean(phi_values)
+# Set the parameters
+s <- 7200
+```
+
+```{r}
+# Source the function file
+source("gamma.hc.map.R")
+
+# Calculate the MAP estimate
+mu_map <- gamma.hc.map(daily_cases, s, posterior_phi_mean)
+mu_map
+# Print the result
+cat("The MAP estimate for mu is:", mu_map, "\n")
+
+```
+
+The MAP estimate of 8511.209 and the posterior mean of 8534.514, falling within the 95% credible interval [7953.733, 9154.023], suggest that the estimates are robust and data-driven, reflecting a true parameter estimation rather than an artifact of prior assumption.
+
+The posterior distribution from the half-Cauchy prior is relatively symmetric, as observed in the histogram generated. When the posterior is symmetric, the MAP estimate (which is the mode) and the posterior mean (the expected value) tend to be very close, which explains why the difference between the MAP estimate (8511.209) and the posterior mean (8534.514) is small.
+
+The half-Cauchy prior introduces heavy tails, which means that even though the distribution is concentrated, extreme values in the tails might have a small influence on the posterior mean. The MAP estimate, being the mode, is less influenced by the tails, which could explain a slight difference between the MAP estimate and the posterior mean.
+
+Question 1.5:
+
+```{r}
+# Define s values
+s_values <- c(1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7)
+
+# Calculate MAP estimates for each s
+mu_map_estimates <- sapply(s_values, function(s) {
+  gamma.hc.map(daily_cases, s, posterior_phi_mean)
+})
+
+
+data_to_plot <- data.frame(s = s_values, mu_map = mu_map_estimates)
+
+ggplot(data_to_plot, aes(x = s, y = mu_map)) +
+  geom_point() +
+  geom_line() +
+  scale_x_log10() +  # Log scale for s
+  ggtitle("MAP Estimates vs. Scale Parameter s") +
+  xlab("Scale parameter s (log scale)") +
+  ylab("MAP Estimate of mu") +
+  geom_hline(yintercept = mu_map, col = "red", lty = 2) +  # Horizontal line for s = 7200
+  annotate("text", x = max(s_values), y = mu_map, label = "s = 7200", hjust = 1.1, vjust = -0.5)
+
+
+
+
+```
+
+-   Based on the graph, the MAP estimate for mu with s = 7200 is part of the trend where the estimates begin to stabilize. This suggests that at s = 7200, the prior has started to exert less influence on the estimate, allowing the data itself to play a more significant role in shaping the MAP estimate.
+
+-   The sensitivity of the MAP estimates to changes in s at lower values and their stabilization at higher values tell us about the nature of the half-Cauchy prior. Specifically, it indicates that the half-Cauchy prior is quite flexible and can be adjusted to be either more or less informative depending on the confidence in prior knowledge or the robustness of the data.
+
+Question 1.8:
+
+```{r}
+# Define a range for nu
+nu_values <- seq(0, 20, length.out = 1000)
+
+# Calculate the transformed prior for different s values
+calculate_prior <- function(nu, s) {
+  mu <- exp(nu)
+  return((2 / (pi * s)) * (exp(nu) / (1 + (mu/s)^2)))
+}
+
+# Calculate priors for different s values
+s_values <- c(10, 100, 1000)
+prior_lists <- lapply(s_values, function(s) {
+  return(calculate_prior(nu_values, s))
+})
+
+# Prepare data for plotting
+data_to_plot <- data.frame(
+  nu = rep(nu_values, times = length(s_values)),
+  prior = unlist(prior_lists),
+  s = factor(rep(s_values, each = length(nu_values)))
+)
+
+# Plotting
+ggplot(data_to_plot, aes(x = nu, y = prior, color = s)) +
+  geom_line() +
+  labs(title = "Transformed Half-Cauchy Prior for Different s Values",
+       x = "Nu (log scale of Mu)",
+       y = "Prior Density",
+       color = "Scale parameter s") +
+  theme_minimal() 
+```
+
+\_ A smaller s leads to a more informative prior, tightly centered around certain values of v, corresponding to more specific ranges of mu.
+
+\_ A larger s results in a less informative, more diffuse prior, implying less certainty about the parameter mu and a greater acceptance of diverse values.
+
+So: The choice of s in the half-Cauchy prior fundamentally shapes our prior beliefs about the parameter mu. Smaller values of s suggest strong beliefs about scale of mu centered around specific ranges, while larger values indicate broad uncertainty.
+
+Question 2.1:
+
+```{r}
+cases <- read.csv("cases.12.weeks.2024.csv")
+```
+
+```{r}
+install.packages("mgcv") 
+library(mgcv)
+
+```
+
+```{r}
+gam_fit_gamma <- gam(Cases ~ s(Day) + Day.Of.Week,
+               family=Gamma(link="log"), data=cases, method="REML")
+summary(gam_fit_gamma)
+```
+
+a)  
+
+\_ The p-value for the smooth term s(x) is \< 2e-16, it is tiny. There is clearly a non-linear relationship between predictors and target variable .
+
+\_ All the Day.Of.Week are highly significant (p-values \< 0.001 for all except Sunday which has a p-value of 0.00417), indicating strong evidence that the day of the week has an effect on the reported case numbers.
+
+b)  
+
+\_ The coefficient for Sunday is -0.07911 with a p-value of 0.0417, indicating that Sundays tend to report statistically fewer cases compared to Friday. In addition, exp(-0.07911) = 0.9239, it suggests that the reported cases of Sunday are approximately 92.39% of the reported cases of Friday.
+
+\_ The coefficient for Monday is 0.16871 with a p-value of 2.46×10−8. This suggests that on Mondays, there are significantly more cases reported than on the Friday. We have: exp(0.16871) = 1.1838, this indicates that the reported cases of Monday are approximately 118.38% of the reported cases of Friday.
+
+Question 2.2:
+
+```{r}
+gam_fit_gaussian<- gam(Cases ~ s(Day) + Day.Of.Week,
+               family=gaussian(link="log"), data=cases, method="REML")
+summary(gam_fit_gaussian)
+```
+
+\_ Both models explain a high percentage of the variance in the data, with the Gaussian model slightly under-performing compared to the gamma model (97.9% vs. 98.1%).
+
+\_ The gamma model is typically more appropriate for count data that might be skewed or have a variance that changes with the mean level.
+
+Question 2.3:
+
+```{r}
+# Generate predictions
+cases$pred_gamma <- predict(gam_fit_gamma, type="response")
+cases$pred_gaussian <- predict(gam_fit_gaussian, type="response")
+
+# Plot
+ggplot(cases, aes(x = Day)) +
+  geom_line(aes(y = Cases, colour = "Observed Cases"), size = 1) + 
+  geom_line(aes(y = pred_gamma, colour = "Gamma Prediction"), linetype = "dashed", size = 1) +
+  geom_line(aes(y = pred_gaussian, colour = "Gaussian Prediction"), linetype = "dotted", size = 1) +
+  labs(title = "Daily Cases and Model Predictions",
+       x = "Day",
+       y = "Number of Cases",
+       colour = "Legend") +
+  scale_color_manual(values = c("Observed Cases" = "black", 
+                                "Gamma Prediction" = "red", 
+                                "Gaussian Prediction" = "blue")) +
+  theme_minimal()
+```
+
+\_ From the graph, both the Gamma and Gaussian generalized additive models (GAM) seem to fit the observed daily case numbers quite well, closely following the trends in the data.
+
+\_ The Gamma distribution is specifically designed for modeling non-negative continuous data, making it inherently suitable for count data like daily cases, which can only take positive values.\
+\_ The link function used in the Gamma GAM is logarithmic, which means it models the logarithm of the expected counts, transforming back to the original scale via the exponential function. This approach can handle skewness naturally seen in count data, allowing for a multiplicative effect that might provide a better fit for increasing or decreasing trends.
+
+\_ The Gaussian (or normal) distribution is used for data that can be symmetrically distributed around a mean. While it can be used with a logarithmic link to ensure that predictions are non-negative, it generally assumes that the residuals around the predictions are symmetrically distributed, which may not be appropriate for count data that often has a skewed distribution.
+
+\_ The plot appears the Gamma prediction (red line) closely follows the peaks and drops more smoothly and tightly than the Gaussian prediction (blue dotted line), particularly during sharp increases or steep falls in case numbers. This might indicate a better handling of the inherent variability and skewness in the data.
+
+\_ The Gamma GAM likely has an advantage in modeling this series because its assumptions and characteristics align more closely with the nature of count data. It accommodates the skewness and variance structure of the data more effectively.
+
+Part2:\
+2.6
+
+```{r}
+source("gamreg.gd.R")
+```
+
+```{r}
+gamma_regression_stats <- function(y, X, beta0, beta, phi) {
+  n <- length(y)
+  mu <- exp(beta0 + X %*% beta)
+  lgamma_phi <- lgamma(phi)
+
+  # Calculate NLL
+  NLL <- phi * sum(log(mu) + phi*y/mu) - n * phi * log(phi) + n * lgamma_phi - (phi - 1)* sum(log(y))
+
+  # Calculate gradients
+  gradient_beta0 <- phi * sum((mu - y) / mu)
+  gradient_beta <- phi * t(X) %*% ((mu - y) / mu)
+
+  # Return results
+  return (
+  list(NLL = NLL, gradient_beta0 = gradient_beta0, gradient_beta = gradient_beta))
+}
+```
+
+Question 2.7:
+
+```{r}
+library(data.table)
+```
+
+```{r}
+source("gamreg.gd.R")
+data <- read.csv("gamreg.test.csv") 
+```
+
+```{r}
+# Use df2matrix to get X and y matrices
+result <- df2matrix(y ~., data)
+
+# Extract X and y
+X <- result$X
+y <- result$y
+
+# Run the gradient descent model
+results <- gamreg.gd(X, y, phi = 1, kappa = 1, max.grad = 1e-4)
+```
+
+```{r}
+cat("Final estimates:\n")
+cat("Intercept (beta0):", results$beta0.hat, "\n")
+cat("Coefficients (beta):", results$beta.hat, "\n")
+```
+
+Question 2.8:
+
+```{r}
+# Load the data
+data <- read.csv("cases.12.weeks.2024.csv")
+
+# Generate polynomial terms for Day up to degree 10
+data$Day2 <- data$Day^2
+data$Day3 <- data$Day^3
+data$Day4 <- data$Day^4
+data$Day5 <- data$Day^5
+data$Day6 <- data$Day^6
+data$Day7 <- data$Day^7
+data$Day8 <- data$Day^8
+data$Day9 <- data$Day^9
+data$Day10 <- data$Day^10
+```
+
+```{r}
+# Fit the gamma regression model with polynomial terms and Day.Of.Week
+fit_gamma <- glm(Cases ~ Day + Day2 + Day3 + Day4 + Day5 + Day6 + Day7 + Day8 + Day9 + Day10 + Day.Of.Week, family = Gamma(link = "log"), data = data)
+
+# Summary of the fitted model
+summary(fit_gamma)
+
+```
+
+```{r}
+# Make predictions
+data$Predicted_Cases <- predict(fit_gamma, type = "response")
+```
+
+```{r}
+install.packages("ggplot2")
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+# Plot observed vs predicted cases
+ggplot(data, aes(x = Day)) +
+  geom_line(aes(y = Cases), color = "blue", size = 1.2, linetype = "solid") +
+  geom_line(aes(y = Predicted_Cases), color = "red", size = 1.2, linetype = "dashed") +
+  labs(title = "Observed vs Predicted Daily Cases",
+       x = "Day", 
+       y = "Number of Cases") +
+  theme_minimal() +
+  scale_color_manual(name = "Legend", values = c("Observed" = "blue", "Predicted" = "red"))
+
+```
+
+\_ Both the predicted and observed data capture the overall trend---rising cases initially, followed by a peak and a gradual decline. This suggests that the gamma regression model effectively fits the general trend of the data.
+
+\_ In comparison to the predictions made by the GAM, which can handle non-linear relationships more flexibly, the GAM might smooth out these fluctuations more effectively and reduce the minor discrepancies between predicted and observed values. GAM models, by nature, tend to provide smoother fits for non-linear data, while the gamma regression with polynomial terms may introduce some overfitting in certain cases due to the fixed structure of the polynomial expansion.
+
+Question 2.8:
+
+```{r}
+# Load data
+data <- read.csv("cases.12.weeks.2024.csv")
+
+# Create matrix of polynomial terms for Day and Day.Of.Week (one-hot encoded or factor)
+X <- as.matrix(cbind(poly(data$Day, 10), 
+                     model.matrix(~ as.factor(data$Day.Of.Week) - 1)))
+
+# Target variable (Cases)
+y <- data$Cases
+
+# Fit the gamma regression model using gamreg.gd
+results <- gamreg.gd(X, y, phi = 1, kappa = 1, max.grad = 1e-4)
+
+# Check final estimates (you may adjust the printout)
+cat("Final estimates:\n")
+cat("Intercept (beta0):", results$beta0.hat, "\n")
+cat(" Coefficients (beta)", results$beta.hat, "\n")
+
+# Make predictions based on the fitted model
+data$Predicted_Cases <- exp(results$beta0.hat + as.vector(X %*% results$beta.hat))
+
+# Plot observed vs predicted cases
+library(ggplot2)
+ggplot(data, aes(x = Day)) +
+  geom_line(aes(y = Cases, color = "Observed")) +
+  geom_line(aes(y = Predicted_Cases, color = "Predicted")) +
+  labs(title = "Observed vs Predicted Daily Case Numbers",
+       x = "Day", y = "Case Numbers") +
+  theme_minimal()
+
+```
+
+\_ For the model of gradient descent for gamma regression and the model of GAM gamma, they both capture the cyclical patterns, especially the peaks and declines, indicating that both models successfully fit the data.
+
+\_ The main observed fluctuations in the cases are predicted by both models at similar points on the timeline.
