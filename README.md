@@ -29,19 +29,19 @@ This project was motivated by the need to better understand:
 
 ### 1. Transformed Half-Cauchy Prior for Different Scale Values
 
-![Transformed Half-Cauchy Prior for Different s Values](Screenshot%202026-04-10%20at%2012.15.57%E2%80%AFam.png)
+![Transformed Half-Cauchy Prior for Different s Values](Transformed_Half-Cauchy_Prior.png)
 
 This figure shows how the transformed half-Cauchy prior changes for different values of the scale parameter `s`. Smaller values of `s` produce a more concentrated prior, while larger values create a broader and less informative prior. This helps illustrate how prior choice affects Bayesian modelling assumptions.
 
 ### 2. Daily Cases and Model Predictions
 
-![Daily Cases and Model Predictions](Screenshot%202026-04-10%20at%2012.16.11%E2%80%AFam.png)
+![Daily Cases and Model Predictions](Daily_Cases_and_Model_Predictions.png)
 
 This visual compares the observed daily case numbers with predictions from both Gamma and Gaussian GAM models. Both models follow the overall trend closely, but the Gamma model appears better suited to the non-negative and slightly skewed nature of the case data.
 
 ### 3. Observed vs Predicted Daily Case Numbers
 
-![Observed vs Predicted Daily Case Numbers](Screenshot%202026-04-10%20at%2012.16.28%E2%80%AFam.png)
+![Observed vs Predicted Daily Case Numbers](Observed_and_Predicted_Daily_Case_Numbers.png)
 
 This plot compares observed case counts with predictions from the gamma regression approach. The model captures the overall rise, peak, and decline in cases reasonably well, showing that it can reflect the main structure of the data even if some local fluctuations remain.
 
